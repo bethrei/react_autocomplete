@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import classNames from 'classnames';
 import debounce from 'lodash.debounce';
 import { peopleFromServer } from '../data/people';
@@ -20,23 +20,38 @@ export const Autocomplete: React.FC<Props> = ({
   const [inFocus, setInFocus] = useState(false);
 
   const filteredList = useMemo(() => {
-    const list = peopleFromServer.filter(person =>
+    if (!filteringQuery) {
+      return peopleFromServer;
+    }
+
+    return peopleFromServer.filter(person =>
       person.name
         .toLocaleLowerCase()
         .includes(filteringQuery.toLocaleLowerCase()),
     );
+  }, [filteringQuery]);
 
-    onNotFound(list.length === 0);
-
-    return list;
-  }, [filteringQuery, onNotFound]);
+  useEffect(() => {
+    onNotFound(filteringQuery !== '' && filteredList.length === 0);
+  }, [filteringQuery, filteredList, onNotFound]);
 
   const debounceQuery = useCallback(debounce(setFilteringQuery, delay), []);
 
   function handleInput(newValue: string) {
     onSelect(null);
     setQuery(newValue);
-    debounceQuery(newValue);
+
+    const trimmed = newValue.trim();
+
+    debounceQuery.cancel();
+
+    if (!trimmed) {
+      setFilteringQuery('');
+
+      return;
+    }
+
+    debounceQuery(trimmed);
   }
 
   function handleMouseDown(selectedPerson: Person) {
